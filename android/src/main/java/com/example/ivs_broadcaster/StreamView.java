@@ -152,7 +152,7 @@ public class StreamView implements PlatformView, MethodChannel.MethodCallHandler
                 result.success(isMuted);
                 break;
             case METHOD_SEND_TIME_METADATA:
-//                sendMetaData(call.argument("metadata"));
+                sendMetaData(call.argument("metadata"));
                 result.success(true);
                 break;
             case METHOD_GET_CAMERA_ZOOM_FACTOR:
@@ -300,6 +300,11 @@ public class StreamView implements PlatformView, MethodChannel.MethodCallHandler
     private SurfaceSource source;
     private Device.Descriptor currentCamera;
 
+    private void sendMetaData(String metadata) {
+        if (broadcastSession != null) {
+            broadcastSession.sendTimedMetadata(metadata);
+        }
+    }
     private void startPreview(String url, String key, String quality, Boolean autoReconnect) {
         this.streamUrl = url;
         this.streamKey = key;
@@ -588,6 +593,21 @@ public class StreamView implements PlatformView, MethodChannel.MethodCallHandler
         public void onError(@NonNull BroadcastException exception) {
             Map<Object, Object> event = new HashMap<>();
             event.put("error", exception.getError().name() + ": " + exception.getDetail());
+            sendEvent(event);
+        }
+
+        @Override
+        public void onRetryStateChanged(@NonNull BroadcastSession.RetryState state) {
+            Map<Object, Object> event = new HashMap<>();
+            event.put("retrystate", state.ordinal());
+            sendEvent(event);
+        }
+
+        @Override
+        public void onTransmissionStatsChanged(@NonNull TransmissionStats stats) {
+            Map<Object, Object> event = new HashMap<>();
+            event.put("quality", stats.broadcastQuality.ordinal());
+            event.put("network", stats.networkHealth.ordinal());
             sendEvent(event);
         }
 
