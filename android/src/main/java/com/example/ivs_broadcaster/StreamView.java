@@ -118,6 +118,7 @@ public class StreamView implements PlatformView, MethodChannel.MethodCallHandler
     private static final String METHOD_CAPTURE_VIDEO = "captureVideo";
     private static final String METHOD_STOP_VIDEO_CAPTURE = "stopVideoCapture";
     private static final String METHOD_SEND_TIME_METADATA = "sendTimeMetaData";
+    private static final String METHOD_SET_BITRATE = "setBitrate";
 
     private static final String ARG_IMGSET = "imgset";
     private static final String ARG_STREAM_KEY = "streamKey";
@@ -127,6 +128,7 @@ public class StreamView implements PlatformView, MethodChannel.MethodCallHandler
     private static final String ARG_LENS = "lens";
     private static final String ARG_TYPE = "type";
     private static final String ARG_SECONDS = "seconds";
+    private static final String ARG_BITRATE = "bitrate";
 
 
     @Override
@@ -169,6 +171,11 @@ public class StreamView implements PlatformView, MethodChannel.MethodCallHandler
             case METHOD_SET_FOCUS_MODE:
                 setFocusMode(call.argument(ARG_TYPE));
                 result.success(true);
+                break;
+            case METHOD_SET_BITRATE:
+                int bitrate = call.argument(ARG_BITRATE);
+                boolean success = setBitrate(bitrate);
+                result.success(success);
                 break;
             default:
                 result.notImplemented();
@@ -461,6 +468,35 @@ public class StreamView implements PlatformView, MethodChannel.MethodCallHandler
         if (audioDevice != null) {
             isMuted = !isMuted;
             audioDevice.setGain(isMuted ? 0.0f : 1.0f);
+        }
+    }
+
+    private boolean setBitrate(int bitrate) {
+        if (broadcastSession == null) {
+            Log.w(TAG, "No broadcast session available - cannot set bitrate");
+            return false;
+        }
+
+        try {
+            BroadcastConfiguration config = broadcastSession.getConfiguration();
+
+            // Validate bitrate range (500 Kbps to 20 Mbps)
+            int minBitrate = 500000;
+            int maxBitrate = 20000000;
+            int clampedBitrate = Math.max(minBitrate, Math.min(bitrate, maxBitrate));
+
+            config.video.setInitialBitrate(clampedBitrate);
+            config.video.setMinBitrate((int)(clampedBitrate * 0.6)); // Set min to 60% of target
+            config.video.setMaxBitrate((int)(clampedBitrate * 1.4)); // Set max to 140% of target
+
+            Log.d(TAG, "Video bitrate updated successfully - Initial: " + clampedBitrate +
+                    ", Min: " + (int)(clampedBitrate * 0.6) +
+                    ", Max: " + (int)(clampedBitrate * 1.4));
+            return true;
+
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to set video bitrate: " + e.getMessage());
+            return false;
         }
     }
 
