@@ -587,34 +587,44 @@ public class StreamView implements PlatformView, MethodChannel.MethodCallHandler
     private BroadcastConfiguration getConfig(String quality) {
         BroadcastConfiguration config = Presets.Configuration.STANDARD_PORTRAIT;
 
-        int bitrate; // Will be set based on quality or stored preference
+        int sdkMin = 100_000;
+        int sdkMax = 8_500_000;
+        int bitrate;
 
         switch (quality) {
             case "360":
                 config.video.setSize(640, 360);
-                bitrate = (desiredBitrate != -1) ? desiredBitrate : 800000;
+                bitrate = (desiredBitrate != -1) ? desiredBitrate : 800_000;
                 break;
             case "720":
                 config.video.setSize(1280, 720);
-                bitrate = (desiredBitrate != -1) ? desiredBitrate : 2500000;
+                bitrate = (desiredBitrate != -1) ? desiredBitrate : 2_500_000;
                 break;
             case "1080":
             default:
                 config.video.setSize(1920, 1080);
-                bitrate = (desiredBitrate != -1) ? desiredBitrate : 5000000;
+                bitrate = (desiredBitrate != -1) ? desiredBitrate : 5_000_000;
                 break;
         }
 
-        // Apply the bitrate (either stored preference or quality default)
+        // Clamp initial bitrate
+        bitrate = Math.max(sdkMin, Math.min(bitrate, sdkMax));
         config.video.setInitialBitrate(bitrate);
-        config.video.setMinBitrate((int)(bitrate * 0.6)); // 60% of target
-        config.video.setMaxBitrate((int)(bitrate * 1.4)); // 140% of target
 
-        Log.d(TAG, "getConfig called with quality: " + quality +
-                ", desiredBitrate: " + desiredBitrate +
-                ", minBitrate: " + (int)(bitrate * 0.6) +
-                ", maxBitrate: " + (int)(bitrate * 1.4) +
-                ", final bitrate set: " + bitrate);
+        // Compute and clamp min/max around initial
+        int minB = (int)(bitrate * 0.6);
+        int maxB = (int)(bitrate * 1.4);
+
+        minB = Math.max(sdkMin, Math.min(minB, sdkMax));
+        maxB = Math.max(sdkMin, Math.min(maxB, sdkMax));
+
+        config.video.setMinBitrate(minB);
+        config.video.setMaxBitrate(maxB);
+
+        Log.d(TAG, "getConfig: quality=" + quality +
+                " initial=" + bitrate +
+                " min=" + minB +
+                " max=" + maxB);
 
         return config;
     }
