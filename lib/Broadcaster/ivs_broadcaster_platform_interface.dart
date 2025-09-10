@@ -122,4 +122,11 @@ abstract class IvsBroadcasterPlatform extends PlatformInterface {
   Future<CameraBrightness> getCameraBrightness();
 
   Future<void> setCameraBrightness(CameraBrightness brightness);
+
+  /// Sets the video bitrate for the broadcast session.
+  ///
+  /// * [bitrate]: The video bitrate in bits per second.
+  ///
+  /// Returns a [Future] that completes with a boolean indicating whether the bitrate was set successfully.
+  Future<bool> setBitrate(int bitrate);
 }

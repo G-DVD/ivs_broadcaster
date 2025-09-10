@@ -290,4 +290,15 @@ class MethodChannelIvsBroadcaster extends IvsBroadcasterPlatform {
       throw Exception("$e [Set Camera Brightness]");
     }
   }
+
+  @override
+  Future<bool> setBitrate(int bitrate) async {
+    try {
+      return await methodChannel.invokeMethod("setBitrate", {
+        'bitrate': bitrate,
+      }) ?? false;
+    } catch (e) {
+      throw Exception("$e [Set Bitrate]");
+    }
+  }
 }

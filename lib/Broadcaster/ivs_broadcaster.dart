@@ -278,4 +278,13 @@ class IvsBroadcaster {
   Future<void> setCameraBrightness(CameraBrightness brightness) async {
     return await broadcater.setCameraBrightness(brightness);
   }
+
+  /// Sets the video bitrate for the broadcast session.
+  ///
+  /// * [bitrate]: The video bitrate in bits per second (e.g., 2500000 for 2.5 Mbps)
+  ///
+  /// Returns a [Future] that completes with a boolean indicating whether the bitrate was set successfully.
+  Future<bool> setBitrate(int bitrate) async {
+    return await broadcater.setBitrate(bitrate);
+  }
 }
