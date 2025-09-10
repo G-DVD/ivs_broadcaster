@@ -474,8 +474,8 @@ public class StreamView implements PlatformView, MethodChannel.MethodCallHandler
     private int desiredBitrate = -1; // -1 means use default
     private boolean setBitrate(int bitrate) {
         // Validate bitrate range (500 Kbps to 20 Mbps)
-        int minBitrate = 500000;
-        int maxBitrate = 20000000;
+        int minBitrate = 100000;
+        int maxBitrate = 8500000;
         int clampedBitrate = Math.max(minBitrate, Math.min(bitrate, maxBitrate));
 
         // Store the desired bitrate for use in future sessions
