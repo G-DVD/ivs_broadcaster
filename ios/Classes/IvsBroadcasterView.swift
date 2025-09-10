@@ -157,6 +157,10 @@ class IvsBroadcasterView: NSObject, FlutterPlatformView, FlutterStreamHandler,
     
     private var streamKey: String?
     private var rtmpsKey: String?
+
+    // MARK: - Orientation Properties
+    private var deviceOrientation: UIDeviceOrientation = .portrait
+    private var orientationObserver: NSObjectProtocol?
     
     init(
         _ frame: CGRect,
@@ -172,6 +176,7 @@ class IvsBroadcasterView: NSObject, FlutterPlatformView, FlutterStreamHandler,
         super.init()
         
         logger.log("IvsBroadcasterView initialized with frame: \(frame), viewId: \(viewId)")
+        setupOrientationMonitoring()
         
         _methodChannel.setMethodCallHandler(onMethodCall)
         _eventChannel.setStreamHandler(self)
@@ -192,7 +197,12 @@ class IvsBroadcasterView: NSObject, FlutterPlatformView, FlutterStreamHandler,
     deinit {
         logger.log("IvsBroadcasterView deallocated")
         NotificationCenter.default.removeObserver(self)
-        
+
+        if let observer = orientationObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        UIDevice.current.endGeneratingDeviceOrientationNotifications()
+
         // Cancel all active timers
         audioTimerLock.lock()
         for timer in activeAudioTimers {
@@ -201,6 +211,91 @@ class IvsBroadcasterView: NSObject, FlutterPlatformView, FlutterStreamHandler,
         activeAudioTimers.removeAll()
         audioTimerLock.unlock()
     }
+
+    // MARK: - Orientation Management
+    private func setupOrientationMonitoring() {
+        logger.log("Setting up device orientation monitoring")
+
+        // Enable device orientation notifications
+        UIDevice.current.beginGeneratingDeviceOrientationNotifications()
+
+        // Set up orientation change observer
+        orientationObserver = NotificationCenter.default.addObserver(
+            forName: UIDevice.orientationDidChangeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.handleOrientationChange()
+        }
+    }
+
+    private func handleOrientationChange() {
+        let newOrientation = UIDevice.current.orientation
+
+        // Only update for valid orientations
+        guard newOrientation.isValidInterfaceOrientation else { return }
+
+        deviceOrientation = newOrientation
+        logger.log("Device orientation changed to: \(deviceOrientation.rawValue)")
+
+        // Update camera orientation and preview layout
+        updateCameraOrientation()
+        updatePreviewLayerFrame()
+    }
+
+    private func updateCameraOrientation() {
+        guard let previewLayer = videoPreviewLayer else { return }
+
+        let videoOrientation = deviceOrientationToVideoOrientation(deviceOrientation)
+
+        // Update preview layer connection orientation
+        if let connection = previewLayer.connection,
+           connection.isVideoOrientationSupported {
+            connection.videoOrientation = videoOrientation
+            logger.log("Preview layer orientation updated to: \(videoOrientation.rawValue)")
+        }
+
+        // Update capture session connections orientation
+        if let captureSession = self.captureSession {
+            for connection in captureSession.connections {
+                if connection.isVideoOrientationSupported {
+                    connection.videoOrientation = videoOrientation
+                    logger.log("Capture connection orientation updated to: \(videoOrientation.rawValue)")
+                }
+            }
+        }
+    }
+
+    private func deviceOrientationToVideoOrientation(_ orientation: UIDeviceOrientation) -> AVCaptureVideoOrientation {
+        switch orientation {
+        case .portrait:
+            return .portrait
+        case .portraitUpsideDown:
+            return .portraitUpsideDown
+        case .landscapeLeft:
+            return .landscapeRight  // Note: mapping is reversed
+        case .landscapeRight:
+            return .landscapeLeft   // Note: mapping is reversed
+        default:
+            return .portrait
+        }
+    }
+
+    private func updatePreviewLayerFrame() {
+        guard let previewLayer = videoPreviewLayer else { return }
+
+        DispatchQueue.main.async {
+            // Wait for the view to finish laying out
+            self.previewView.layoutIfNeeded()
+
+            // Update the preview layer frame to match the current view bounds
+            let newFrame = self.previewView.bounds
+            previewLayer.frame = newFrame
+
+            self.logger.log("Preview layer frame updated to: \(newFrame)")
+        }
+    }
+
     
     // MARK: - Improved Audio/Video Processing Queues with same priority
     private let audioQueue = DispatchQueue(label: "audio-processing-queue", qos: .userInitiated)
@@ -1413,10 +1508,17 @@ class IvsBroadcasterView: NSObject, FlutterPlatformView, FlutterStreamHandler,
             guard let session = self.captureSession else { return }
             let videoPreviewLayer = AVCaptureVideoPreviewLayer(session: session)
             videoPreviewLayer.videoGravity = .resizeAspectFill
+
             videoPreviewLayer.frame = self.previewView.bounds
-            videoPreviewLayer.connection?.videoOrientation = .landscapeRight
+
+            let initialOrientation = self.deviceOrientationToVideoOrientation(UIDevice.current.orientation)
+            videoPreviewLayer.connection?.videoOrientation = initialOrientation
+
             self.previewView.layer.addSublayer(videoPreviewLayer)
-            self.logger.log("Video preview layer added")
+            self.videoPreviewLayer = videoPreviewLayer
+            self.logger.log("Video preview layer added with initial orientation: \(initialOrientation.rawValue)")
+
+            self.handleOrientationChange()
         }
         
         // Start session on background queue
@@ -1575,3 +1677,14 @@ extension IvsBroadcasterView: AVCaptureFileOutputRecordingDelegate {
     }
 }
  
+// MARK: - UIDeviceOrientation Extension
+extension UIDeviceOrientation {
+    var isValidInterfaceOrientation: Bool {
+        switch self {
+        case .portrait, .portraitUpsideDown, .landscapeLeft, .landscapeRight:
+            return true
+        default:
+            return false
+        }
+    }
+}
