@@ -610,6 +610,12 @@ public class StreamView implements PlatformView, MethodChannel.MethodCallHandler
         config.video.setMinBitrate((int)(bitrate * 0.6)); // 60% of target
         config.video.setMaxBitrate((int)(bitrate * 1.4)); // 140% of target
 
+        Log.d(TAG, "getConfig called with quality: " + quality +
+                ", desiredBitrate: " + desiredBitrate +
+                ", minBitrate: " + (int)(bitrate * 0.6) +
+                ", maxBitrate: " + (int)(bitrate * 1.4) +
+                ", final bitrate set: " + bitrate);
+
         return config;
     }
 
