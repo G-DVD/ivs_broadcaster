@@ -634,6 +634,7 @@ class IvsBroadcasterView: NSObject, FlutterPlatformView, FlutterStreamHandler,
     private let METHOD_SET_CAMERA_BRIGHTNESS = "setCameraBrightness"
     private let METHOD_GET_LOG_FILE_PATH = "getLogFilePath"
     private let METHOD_GET_ALL_LOG_FILES = "getAllLogFiles"
+    private let METHOD_SET_BITRATE = "setBitrate"
     
     private var initialZoomScale: CGFloat = 1.0
     private var currentZoomFactor: CGFloat = 1.0
@@ -648,6 +649,7 @@ class IvsBroadcasterView: NSObject, FlutterPlatformView, FlutterStreamHandler,
     private let ARG_TYPE = "type"
     private let ARG_SECONDS = "seconds"
     private let ARG_BRIGHTNESS = "brightness"
+    private let ARG_BITRATE = "bitrate"
     
     func onMethodCall(call: FlutterMethodCall, result: FlutterResult) {
         logger.log("Method call received: \(call.method)")
@@ -764,7 +766,18 @@ class IvsBroadcasterView: NSObject, FlutterPlatformView, FlutterStreamHandler,
             let allLogs = logger.getAllLogFiles()
             logger.log("All log files requested: \(allLogs)")
             result(allLogs)
-            
+
+        case METHOD_SET_BITRATE:
+            let args = call.arguments as? [String: Any]
+            if let bitrate = args?[ARG_BITRATE] as? Int {
+                logger.log("Setting video bitrate to: \(bitrate)")
+                let success = setBitrate(bitrate)
+                result(success)
+            } else {
+                logger.log("Invalid bitrate parameter", level: .error)
+                result(false)
+            }
+
         default:
             logger.log("Unknown method call: \(call.method)", level: .warning)
             result(FlutterMethodNotImplemented)
@@ -1131,6 +1144,33 @@ class IvsBroadcasterView: NSObject, FlutterPlatformView, FlutterStreamHandler,
         } catch {
             logger.log("Failed to switch to front camera: \(error)", level: .error)
             return
+        }
+    }
+
+    func setBitrate(_ bitrate: Int) -> Bool {
+        guard let broadcastSession = self.broadcastSession else {
+            logger.log("No broadcast session available - cannot set bitrate", level: .warning)
+            return false
+        }
+
+        do {
+            let config = broadcastSession.configuration
+
+            // Validate bitrate range (500 Kbps to 20 Mbps)
+            let minBitrate = 500_000
+            let maxBitrate = 20_000_000
+            let clampedBitrate = max(minBitrate, min(bitrate, maxBitrate))
+
+            try config.video.setInitialBitrate(clampedBitrate)
+            try config.video.setMinBitrate(Int(Double(clampedBitrate) * 0.6)) // Set min to 60% of target
+            try config.video.setMaxBitrate(Int(Double(clampedBitrate) * 1.4)) // Set max to 140% of target
+
+            logger.log("Video bitrate updated successfully - Initial: \(clampedBitrate), Min: \(Int(Double(clampedBitrate) * 0.6)), Max: \(Int(Double(clampedBitrate) * 1.4))")
+            return true
+
+        } catch {
+            logger.log("Failed to set video bitrate: \(error)", level: .error)
+            return false
         }
     }
     
