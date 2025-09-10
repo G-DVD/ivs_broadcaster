@@ -471,33 +471,20 @@ public class StreamView implements PlatformView, MethodChannel.MethodCallHandler
         }
     }
 
+    private int desiredBitrate = -1; // -1 means use default
     private boolean setBitrate(int bitrate) {
-        if (broadcastSession == null) {
-            Log.w(TAG, "No broadcast session available - cannot set bitrate");
-            return false;
-        }
+        // Validate bitrate range (500 Kbps to 20 Mbps)
+        int minBitrate = 500000;
+        int maxBitrate = 20000000;
+        int clampedBitrate = Math.max(minBitrate, Math.min(bitrate, maxBitrate));
 
-        try {
-            BroadcastConfiguration config = broadcastSession.getConfiguration();
+        // Store the desired bitrate for use in future sessions
+        this.desiredBitrate = clampedBitrate;
 
-            // Validate bitrate range (500 Kbps to 20 Mbps)
-            int minBitrate = 500000;
-            int maxBitrate = 20000000;
-            int clampedBitrate = Math.max(minBitrate, Math.min(bitrate, maxBitrate));
+        Log.d(TAG, "Bitrate preference stored: " + clampedBitrate +
+                " (will apply to next session)");
 
-            config.video.setInitialBitrate(clampedBitrate);
-            config.video.setMinBitrate((int)(clampedBitrate * 0.6)); // Set min to 60% of target
-            config.video.setMaxBitrate((int)(clampedBitrate * 1.4)); // Set max to 140% of target
-
-            Log.d(TAG, "Video bitrate updated successfully - Initial: " + clampedBitrate +
-                    ", Min: " + (int)(clampedBitrate * 0.6) +
-                    ", Max: " + (int)(clampedBitrate * 1.4));
-            return true;
-
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to set video bitrate: " + e.getMessage());
-            return false;
-        }
+        return true;
     }
 
     private void changeCamera(String type) {
@@ -599,21 +586,30 @@ public class StreamView implements PlatformView, MethodChannel.MethodCallHandler
 
     private BroadcastConfiguration getConfig(String quality) {
         BroadcastConfiguration config = Presets.Configuration.STANDARD_PORTRAIT;
+
+        int bitrate; // Will be set based on quality or stored preference
+
         switch (quality) {
             case "360":
                 config.video.setSize(640, 360);
-                config.video.setInitialBitrate(800000);
+                bitrate = (desiredBitrate != -1) ? desiredBitrate : 800000;
                 break;
             case "720":
                 config.video.setSize(1280, 720);
-                config.video.setInitialBitrate(2500000);
+                bitrate = (desiredBitrate != -1) ? desiredBitrate : 2500000;
                 break;
             case "1080":
             default:
                 config.video.setSize(1920, 1080);
-                config.video.setInitialBitrate(5000000);
+                bitrate = (desiredBitrate != -1) ? desiredBitrate : 5000000;
                 break;
         }
+
+        // Apply the bitrate (either stored preference or quality default)
+        config.video.setInitialBitrate(bitrate);
+        config.video.setMinBitrate((int)(bitrate * 0.6)); // 60% of target
+        config.video.setMaxBitrate((int)(bitrate * 1.4)); // 140% of target
+
         return config;
     }
 
