@@ -1147,32 +1147,16 @@ class IvsBroadcasterView: NSObject, FlutterPlatformView, FlutterStreamHandler,
         }
     }
 
+    private var desiredBitrate: Int? = nil
+
     func setBitrate(_ bitrate: Int) -> Bool {
-        guard let broadcastSession = self.broadcastSession else {
-            logger.log("No broadcast session available - cannot set bitrate", level: .warning)
-            return false
-        }
-
-        do {
-            let config = broadcastSession.configuration
-
-            // Validate bitrate range (500 Kbps to 20 Mbps)
-            let minBitrate = 500_000
-            let maxBitrate = 20_000_000
-            let clampedBitrate = max(minBitrate, min(bitrate, maxBitrate))
-
-            try config.video.setInitialBitrate(clampedBitrate)
-            try config.video.setMinBitrate(Int(Double(clampedBitrate) * 0.6)) // Set min to 60% of target
-            try config.video.setMaxBitrate(Int(Double(clampedBitrate) * 1.4)) // Set max to 140% of target
-
-            logger.log("Video bitrate updated successfully - Initial: \(clampedBitrate), Min: \(Int(Double(clampedBitrate) * 0.6)), Max: \(Int(Double(clampedBitrate) * 1.4))")
-            return true
-
-        } catch {
-            logger.log("Failed to set video bitrate: \(error)", level: .error)
-            return false
-        }
-    }
+        let sdkMin = 100_000       // 100 Kbps
+        let sdkMax = 8_500_000     // 8.5 Mbps
+        let clamped = max(sdkMin, min(bitrate, sdkMax))
+        desiredBitrate = clamped
+        logger.log("Bitrate preference stored: \(clamped) (applied next session)")
+        return true
+      }
     
     private var isMuted = false {
         didSet {
@@ -1657,34 +1641,44 @@ extension IvsBroadcasterView: IVSMicrophoneDelegate {
         logger.log("Creating broadcast configuration for resolution: \(resolution)")
         
         let config = IVSBroadcastConfiguration()
+
+        // Resolution default bitrates
+        let defaultBitrate: Int = {
+          switch resolution {
+          case "360":  return 800_000
+          case "720":  return 2_500_000
+          default:     return 5_000_000
+          }
+        }()
+
+        // Use stored desiredBitrate or fallback to default
+        let initial = desiredBitrate ?? defaultBitrate
+        let sdkMin = 100_000
+        let sdkMax = 8_500_000
+
+        // Clamp initial
+        let initialClamped = max(sdkMin, min(initial, sdkMax))
+        try config.video.setInitialBitrate(initialClamped)
+
+        // Compute and clamp min/max
+        let minClamped = max(sdkMin, min(Int(Double(initialClamped) * 0.6), sdkMax))
+        let maxClamped = max(sdkMin, min(Int(Double(initialClamped) * 1.4), sdkMax))
+        try config.video.setMinBitrate(minClamped)
+        try config.video.setMaxBitrate(maxClamped)
+
+
+        // Apply resolution and framerate settings
         switch resolution {
         case "360":
-            try config.video.setSize(CGSize(width: 640, height: 360))
-            try config.video.setMaxBitrate(1_000_000)
-            try config.video.setMinBitrate(500_000)
-            try config.video.setInitialBitrate(800_000)
-            logger.log("Video config: 640x360, bitrate: 500k-1M (init: 800k)")
+          try config.video.setSize(CGSize(width: 640, height: 360))
         case "720":
-            try config.video.setSize(CGSize(width: 1280, height: 720))
-            try config.video.setMaxBitrate(3_500_000)
-            try config.video.setMinBitrate(1_500_000)
-            try config.video.setInitialBitrate(2_500_000)
-            logger.log("Video config: 1280x720, bitrate: 1.5M-3.5M (init: 2.5M)")
-        case "1080":
-            try config.video.setSize(CGSize(width: 1920, height: 1080))
-            try config.video.setMaxBitrate(6_000_000)
-            try config.video.setMinBitrate(4_000_000)
-            try config.video.setInitialBitrate(5_000_000)
-            logger.log("Video config: 1920x1080, bitrate: 4M-6M (init: 5M)")
+          try config.video.setSize(CGSize(width: 1280, height: 720))
         default:
-            try config.video.setSize(CGSize(width: 1920, height: 1080))
-            try config.video.setMaxBitrate(8_500_000)  // 8.5 Mbps
-            try config.video.setMinBitrate(2_500_000)  // 2.5 Mbps
-            try config.video.setInitialBitrate(5_000_000)  // 5 Mbps
-            try config.video.setTargetFramerate(30)
-            try config.video.setKeyframeInterval(2)
-            logger.log("Video config: 1920x1080 (default), bitrate: 2.5M-8.5M (init: 5M), 30fps")
-        } 
+          try config.video.setSize(CGSize(width: 1920, height: 1080))
+        }
+        try config.video.setTargetFramerate(30)
+        try config.video.setKeyframeInterval(2)
+
         
         // Enhanced audio configuration for better quality
         try config.audio.setBitrate(128_000)  // Increased from 96_000 to 128_000
