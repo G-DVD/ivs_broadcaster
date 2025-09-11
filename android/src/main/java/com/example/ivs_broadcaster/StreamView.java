@@ -119,6 +119,7 @@ public class StreamView implements PlatformView, MethodChannel.MethodCallHandler
     private static final String METHOD_STOP_VIDEO_CAPTURE = "stopVideoCapture";
     private static final String METHOD_SEND_TIME_METADATA = "sendTimeMetaData";
     private static final String METHOD_SET_BITRATE = "setBitrate";
+    private static final String METHOD_SET_FPS = "setFps";
 
     private static final String ARG_IMGSET = "imgset";
     private static final String ARG_STREAM_KEY = "streamKey";
@@ -129,6 +130,7 @@ public class StreamView implements PlatformView, MethodChannel.MethodCallHandler
     private static final String ARG_TYPE = "type";
     private static final String ARG_SECONDS = "seconds";
     private static final String ARG_BITRATE = "bitrate";
+    private static final String ARG_FPS = "fps";
 
 
     @Override
@@ -175,6 +177,11 @@ public class StreamView implements PlatformView, MethodChannel.MethodCallHandler
             case METHOD_SET_BITRATE:
                 int bitrate = call.argument(ARG_BITRATE);
                 boolean success = setBitrate(bitrate);
+                result.success(success);
+                break;
+            case METHOD_SET_FPS:
+                int fps = call.argument(ARG_FPS);
+                boolean success = setFps(fps);
                 result.success(success);
                 break;
             default:
@@ -487,6 +494,21 @@ public class StreamView implements PlatformView, MethodChannel.MethodCallHandler
         return true;
     }
 
+    private int desiredFps = -1; // -1 means use default
+    private boolean setFps(int fps) {
+        // Validate FPS range (10-60 as per IVS SDK limits)
+        int minFps = 10;
+        int maxFps = 60;
+        int clampedFps = Math.max(minFps, Math.min(fps, maxFps));
+
+        // Store the desired fps for use in future sessions
+        this.desiredFps = clampedFps;
+
+        Log.d(TAG, "FPS preference stored: " + clampedFps +
+                " (will apply to next session)");
+        return true;
+    }
+
     private void changeCamera(String type) {
         Device.Descriptor.Position position = type.equals("0")? Device.Descriptor.Position.FRONT: Device.Descriptor.Position.BACK;
         for(Device.Descriptor device: BroadcastSession.listAvailableDevices(context)) {
@@ -590,6 +612,7 @@ public class StreamView implements PlatformView, MethodChannel.MethodCallHandler
         int sdkMin = 100_000;
         int sdkMax = 8_500_000;
         int bitrate;
+        int defaultFps = 30; // Standard for all qualities
 
         switch (quality) {
             case "360":
@@ -621,14 +644,20 @@ public class StreamView implements PlatformView, MethodChannel.MethodCallHandler
         config.video.setMinBitrate(minB);
         config.video.setMaxBitrate(maxB);
 
-        config.video.setTargetFramerate(30);
+        // Apply FPS - use desired FPS if set, otherwise use default
+        int targetFps = (desiredFps != -1) ? desiredFps : defaultFps;
+        config.video.setTargetFramerate(targetFps);
+
+
         config.video.setKeyframeInterval(2);
         config.audio.setBitrate(128000);
 
         Log.d(TAG, "getConfig: quality=" + quality +
                 " initial=" + bitrate +
                 " min=" + minB +
-                " max=" + maxB);
+                " max=" + maxB +
+                " fps=" + targetFps
+                );
 
         return config;
     }
