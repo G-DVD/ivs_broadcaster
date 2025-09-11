@@ -142,5 +142,5 @@ abstract class IvsBroadcasterPlatform extends PlatformInterface {
   /// * [interval]: The video keyframe interval in seconds
   ///
   /// Return a [Future] that completes with a boolean indicating whether the interval was set successfully.
-  Future<bool> setKeyframeInterval(IvsKeyframeInterval interval);
+  Future<bool> setKeyframeInterval(IvsKeyframeInterval keyframeInterval);
 }
