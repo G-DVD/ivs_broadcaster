@@ -1198,11 +1198,8 @@ class IvsBroadcasterView: NSObject, FlutterPlatformView, FlutterStreamHandler,
     private var desiredKeyframeInterval: Int? = nil
 
     func setKeyframeInterval(_ keyframeInterval: Int) -> Bool {
-        let sdkMin = 1 // 1 second minimum
-        let sdkMax = 2 // 2 seconds maximum
-        let clamped = max(sdkMin, min(keyframeInterval, sdkMax))
-        desiredKeyframeInterval = clamped
-        logger.log("Keyframe interval preference stored: \(clamped) seconds (applied next session)")
+        desiredKeyframeInterval = keyframeInterval
+        logger.log("Keyframe interval preference stored: \(keyframeInterval) seconds (applied next session)")
         return true
     }
 
