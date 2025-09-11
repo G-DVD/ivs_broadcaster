@@ -120,6 +120,7 @@ public class StreamView implements PlatformView, MethodChannel.MethodCallHandler
     private static final String METHOD_SEND_TIME_METADATA = "sendTimeMetaData";
     private static final String METHOD_SET_BITRATE = "setBitrate";
     private static final String METHOD_SET_FPS = "setFps";
+    private static final String METHOD_SET_KEYFRAME_INTERVAL = "setKeyframeInterval";
 
     private static final String ARG_IMGSET = "imgset";
     private static final String ARG_STREAM_KEY = "streamKey";
@@ -131,6 +132,7 @@ public class StreamView implements PlatformView, MethodChannel.MethodCallHandler
     private static final String ARG_SECONDS = "seconds";
     private static final String ARG_BITRATE = "bitrate";
     private static final String ARG_FPS = "fps";
+    private static final String ARG_KEYFRAME_INTERVAL = "keyframeInterval";
 
 
     @Override
@@ -183,6 +185,11 @@ public class StreamView implements PlatformView, MethodChannel.MethodCallHandler
                 int fps = call.argument(ARG_FPS);
                 boolean fpsSuccess = setFps(fps);
                 result.success(fpsSuccess);
+                break;
+            case METHOD_SET_KEYFRAME_INTERVAL:
+                int keyframeInterval = call.argument(ARG_KEYFRAME_INTERVAL);
+                boolean keyframeIntervalSuccess = setKeyframeInterval(keyframeInterval);
+                result.success(keyframeIntervalSuccess);
                 break;
             default:
                 result.notImplemented();
@@ -509,6 +516,21 @@ public class StreamView implements PlatformView, MethodChannel.MethodCallHandler
         return true;
     }
 
+    private int desiredKeyframeInterval = -1; // -1 means use default
+    private boolean setKeyframeInterval(int keyframeInterval) {
+        // Validate keyframe interval range (1-2 seconds)
+        int minInterval = 1;
+        int maxInterval = 2;
+        int clampedInterval = Math.max(minInterval, Math.min(keyframeInterval, maxInterval));
+
+        // Store the desired keyframe interval for use in future sessions
+        this.desiredKeyframeInterval = clampedInterval;
+
+        Log.d(TAG, "Keyframe interval preference stored: " + clampedInterval +
+                " seconds (will apply to next session)");
+        return true;
+    }
+
     private void changeCamera(String type) {
         Device.Descriptor.Position position = type.equals("0")? Device.Descriptor.Position.FRONT: Device.Descriptor.Position.BACK;
         for(Device.Descriptor device: BroadcastSession.listAvailableDevices(context)) {
@@ -613,6 +635,7 @@ public class StreamView implements PlatformView, MethodChannel.MethodCallHandler
         int sdkMax = 8_500_000;
         int bitrate;
         int defaultFps = 30; // Standard for all qualities
+        int defaultKeyframeInterval = 2; // Standard for streaming
 
         switch (quality) {
             case "360":
@@ -644,19 +667,22 @@ public class StreamView implements PlatformView, MethodChannel.MethodCallHandler
         config.video.setMinBitrate(minB);
         config.video.setMaxBitrate(maxB);
 
-        // Apply FPS - use desired FPS if set, otherwise use default
+        // Apply FPS - use desired FPS is set, otherwise use default
         int targetFps = (desiredFps != -1) ? desiredFps : defaultFps;
         config.video.setTargetFramerate(targetFps);
 
+        // Apply keyframe interval - use desired if interval is set, otherwise use default
+        int targetKeyframeInterval = (desiredKeyframeInterval != -1) ? desiredKeyframeInterval : defaultKeyframeInterval;
+        config.video.setKeyframeInterval(targetKeyframeInterval);
 
-        config.video.setKeyframeInterval(2);
         config.audio.setBitrate(128000);
 
         Log.d(TAG, "getConfig: quality=" + quality +
                 " initial=" + bitrate +
                 " min=" + minB +
                 " max=" + maxB +
-                " fps=" + targetFps
+                " fps=" + targetFps +
+                " keyframeInterval= " + targetKeyframeInterval
                 );
 
         return config;
