@@ -287,4 +287,14 @@ class IvsBroadcaster {
   Future<bool> setBitrate(int bitrate) async {
     return await broadcater.setBitrate(bitrate);
   }
+
+
+  /// Sets the video fps for the broadcast session.
+  ///
+  /// * [fps]: The video fps in frames per second (e.g., 25 for 25 fps)
+  ///
+  /// Returns a [Future] that completes with a boolean indicating whether the fps was set successfully.
+  Future<bool> setFps(IvsFps fps) async {
+    return await broadcater.setFps(fps);
+  }
 }

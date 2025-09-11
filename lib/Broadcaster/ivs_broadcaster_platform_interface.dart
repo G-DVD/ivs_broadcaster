@@ -129,4 +129,11 @@ abstract class IvsBroadcasterPlatform extends PlatformInterface {
   ///
   /// Returns a [Future] that completes with a boolean indicating whether the bitrate was set successfully.
   Future<bool> setBitrate(int bitrate);
+
+  /// Sets the video fps for the broadcast session.
+  ///
+  /// * [fps]: The video fps in frames per second.
+  ///
+  /// Returns a [Future] that completes with a boolean indicating whether the fps was set successfully.
+  Future<bool> setFps(IvsFps fps);
 }

@@ -294,11 +294,24 @@ class MethodChannelIvsBroadcaster extends IvsBroadcasterPlatform {
   @override
   Future<bool> setBitrate(int bitrate) async {
     try {
-      return await methodChannel.invokeMethod("setBitrate", {
+      final result = await methodChannel.invokeMethod<bool>("setBitrate", {
         'bitrate': bitrate,
-      }) ?? false;
+      });
+      return result ?? false;
     } catch (e) {
       throw Exception("$e [Set Bitrate]");
+    }
+  }
+
+  @override
+  Future<bool> setFps(IvsFps fps) async {
+    try {
+      final result = await methodChannel.invokeMethod<bool>("setFps", {
+        'fps': fps.value, // Only send the int value
+      });
+      return result ?? false;
+    } catch (e) {
+      throw Exception("$e [Set Fps]");
     }
   }
 }
