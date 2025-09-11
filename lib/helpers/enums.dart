@@ -103,3 +103,37 @@ extension IvsQualityExtension on IvsQuality {
     }
   }
 }
+
+enum IvsFps {
+  f10,
+  f15,
+  f20,
+  f24,
+  f25,
+  f30,
+  f50,
+  f60,
+}
+
+extension IvsFpsExtension on IvsFps {
+  int get value {
+    switch (this) {
+      case IvsFps.f10:
+        return 10;
+      case IvsFps.f15:
+        return 15;
+      case IvsFps.f20:
+        return 20;
+      case IvsFps.f24:
+        return 24;
+      case IvsFps.f25:
+        return 25;
+      case IvsFps.f30:
+        return 30;
+      case IvsFps.f50:
+        return 50;
+      case IvsFps.f60:
+        return 60;
+    }
+  }
+}
