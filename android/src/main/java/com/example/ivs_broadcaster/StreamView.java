@@ -347,7 +347,7 @@ public class StreamView implements PlatformView, MethodChannel.MethodCallHandler
 
         Log.d(TAG, "Listing attached devices after BroadcastSession creation:");
         for (Device device : broadcastSession.listAttachedDevices()) {
-            Log.d(TAG, "Device type: " + device.getDescriptor().type + ", ID: " + device.getDescriptor().id);
+            Log.d(TAG, "Device type: " + device.getDescriptor().type);
         }
 
         for (Device device : broadcastSession.listAttachedDevices()) {
