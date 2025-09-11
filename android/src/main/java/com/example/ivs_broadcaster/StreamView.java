@@ -518,15 +518,10 @@ public class StreamView implements PlatformView, MethodChannel.MethodCallHandler
 
     private int desiredKeyframeInterval = -1; // -1 means use default
     private boolean setKeyframeInterval(int keyframeInterval) {
-        // Validate keyframe interval range (1-2 seconds)
-        int minInterval = 1;
-        int maxInterval = 2;
-        int clampedInterval = Math.max(minInterval, Math.min(keyframeInterval, maxInterval));
-
         // Store the desired keyframe interval for use in future sessions
-        this.desiredKeyframeInterval = clampedInterval;
+        this.desiredKeyframeInterval = keyframeInterval;
 
-        Log.d(TAG, "Keyframe interval preference stored: " + clampedInterval +
+        Log.d(TAG, "Keyframe interval preference stored: " + keyframeInterval +
                 " seconds (will apply to next session)");
         return true;
     }
