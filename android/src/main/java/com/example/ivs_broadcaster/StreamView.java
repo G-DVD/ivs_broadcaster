@@ -344,6 +344,12 @@ public class StreamView implements PlatformView, MethodChannel.MethodCallHandler
         };
         config.autoReconnect.setEnabled(autoReconnect);
         broadcastSession = new BroadcastSession(context, broadcastListener, config, Presets.Devices.MICROPHONE(context));
+
+        Log.d(TAG, "Listing attached devices after BroadcastSession creation:");
+        for (Device device : broadcastSession.listAttachedDevices()) {
+            Log.d(TAG, "Device type: " + device.getDescriptor().type + ", ID: " + device.getDescriptor().id);
+        }
+
         for (Device device : broadcastSession.listAttachedDevices()) {
             if (device.getDescriptor().type == Device.Descriptor.DeviceType.MICROPHONE) {
                 audioDevice = (AudioDevice) device;
