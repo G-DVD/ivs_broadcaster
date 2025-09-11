@@ -314,4 +314,16 @@ class MethodChannelIvsBroadcaster extends IvsBroadcasterPlatform {
       throw Exception("$e [Set Fps]");
     }
   }
+
+  @override
+  Future<bool> setKeyframeInterval(IvsKeyframeInterval interval) async {
+    try {
+      final result = await methodChannel.invokeMethod<bool>("setKeyframeInterval", {
+       'interval': interval.value, // Only send the int value
+      });      
+      return result ?? false;
+    } catch (e) {
+      throw Exception("$e [Set Keyframe Interval]");
+    }
+  }
 }

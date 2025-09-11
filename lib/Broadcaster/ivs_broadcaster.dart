@@ -297,4 +297,13 @@ class IvsBroadcaster {
   Future<bool> setFps(IvsFps fps) async {
     return await broadcater.setFps(fps);
   }
+
+  /// Sets the video keyframe interval for the broadcast session.
+  ///
+  /// * [interval]: The video keyframe interval in seconds
+  ///
+  /// Return a [Future] that completes with a boolean indicating whether the interval was set successfully.
+  Future<bool> setKeyframeInterval(IvsKeyframeInterval interval) async {
+    return await broadcater.setKeyframeInterval(interval);
+  }
 }
