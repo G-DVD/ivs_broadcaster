@@ -635,7 +635,8 @@ class IvsBroadcasterView: NSObject, FlutterPlatformView, FlutterStreamHandler,
     private let METHOD_GET_LOG_FILE_PATH = "getLogFilePath"
     private let METHOD_GET_ALL_LOG_FILES = "getAllLogFiles"
     private let METHOD_SET_BITRATE = "setBitrate"
-    
+    private let METHOD_SET_FPS = "setFps"
+
     private var initialZoomScale: CGFloat = 1.0
     private var currentZoomFactor: CGFloat = 1.0
     
@@ -650,7 +651,8 @@ class IvsBroadcasterView: NSObject, FlutterPlatformView, FlutterStreamHandler,
     private let ARG_SECONDS = "seconds"
     private let ARG_BRIGHTNESS = "brightness"
     private let ARG_BITRATE = "bitrate"
-    
+    private let ARG_FPS = "fps"
+
     func onMethodCall(call: FlutterMethodCall, result: FlutterResult) {
         logger.log("Method call received: \(call.method)")
         
@@ -775,6 +777,17 @@ class IvsBroadcasterView: NSObject, FlutterPlatformView, FlutterStreamHandler,
                 result(success)
             } else {
                 logger.log("Invalid bitrate parameter", level: .error)
+                result(false)
+            }
+
+        case METHOD_SET_FPS:
+            let args = call.arguments as? [String: Any]
+            if let fps = args?[ARG_FPS] as? Int {
+                logger.log("Setting video FPS to: \(fps)")
+                let success = setFps(fps)
+                result(success)
+            } else {
+                logger.log("Invalid FPS parameter", level: .error)
                 result(false)
             }
 
@@ -1157,6 +1170,17 @@ class IvsBroadcasterView: NSObject, FlutterPlatformView, FlutterStreamHandler,
         logger.log("Bitrate preference stored: \(clamped) (applied next session)")
         return true
       }
+
+    private var desiredFps: Int? = nil
+
+    func setFps(_ fps: Int) -> Bool {
+        let sdkMin = 10  // 10 FPS minimum
+        let sdkMax = 60  // 60 FPS maximum
+        let clamped = max(sdkMin, min(fps, sdkMax))
+        desiredFps = clamped
+        logger.log("FPS preference stored: \(clamped) (applied next session)")
+        return true
+    }
     
     private var isMuted = false {
         didSet {
@@ -1651,6 +1675,8 @@ extension IvsBroadcasterView: IVSMicrophoneDelegate {
           }
         }()
 
+        let defaultFps = 30 // Standard FPS for all resolution
+
         // Use stored desiredBitrate or fallback to default
         let initial = desiredBitrate ?? defaultBitrate
         let sdkMin = 100_000
@@ -1667,7 +1693,7 @@ extension IvsBroadcasterView: IVSMicrophoneDelegate {
         try config.video.setMaxBitrate(maxClamped)
 
 
-        // Apply resolution and framerate settings
+        // Apply resolution settings
         switch resolution {
         case "360":
           try config.video.setSize(CGSize(width: 640, height: 360))
@@ -1676,7 +1702,11 @@ extension IvsBroadcasterView: IVSMicrophoneDelegate {
         default:
           try config.video.setSize(CGSize(width: 1920, height: 1080))
         }
-        try config.video.setTargetFramerate(30)
+
+        // Apply FPS - use desired FPS if set, otherwise use default
+        let targetFps = desiredFps ?? defaultFps
+        try config.video.setTargetFramerate(targetFps)
+
         try config.video.setKeyframeInterval(2)
 
         
