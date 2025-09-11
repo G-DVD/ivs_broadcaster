@@ -176,13 +176,13 @@ public class StreamView implements PlatformView, MethodChannel.MethodCallHandler
                 break;
             case METHOD_SET_BITRATE:
                 int bitrate = call.argument(ARG_BITRATE);
-                boolean success = setBitrate(bitrate);
-                result.success(success);
+                boolean bitrateSuccess = setBitrate(bitrate);
+                result.success(bitrateSuccess);
                 break;
             case METHOD_SET_FPS:
                 int fps = call.argument(ARG_FPS);
-                boolean success = setFps(fps);
-                result.success(success);
+                boolean fpsSuccess = setFps(fps);
+                result.success(fpsSuccess);
                 break;
             default:
                 result.notImplemented();
