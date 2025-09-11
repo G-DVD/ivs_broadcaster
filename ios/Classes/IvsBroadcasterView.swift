@@ -1732,7 +1732,7 @@ extension IvsBroadcasterView: IVSMicrophoneDelegate {
 
         // Apply keyframe interval - use desired if set, otherwise use default
         let targetKeyframeInterval = desiredKeyframeInterval ?? defaultKeyframeInterval
-        try config.video.setKeyframeInterval(targetKeyframeInterval)
+        try config.video.setKeyframeInterval(Float(targetKeyframeInterval))
 
         
         // Enhanced audio configuration for better quality
