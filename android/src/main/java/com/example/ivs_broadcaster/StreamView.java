@@ -479,9 +479,13 @@ public class StreamView implements PlatformView, MethodChannel.MethodCallHandler
     }
 
     private void toggleMute() {
+        Log.d(TAG, "toggleMute() called");
         if (audioDevice != null) {
             isMuted = !isMuted;
             audioDevice.setGain(isMuted ? 0.0f : 1.0f);
+            Log.d(TAG, "Mute toggled, isMuted=" + isMuted);
+        } else {
+            Log.d(TAG, "audioDevice is null, cannot toggle mute");
         }
     }
 
