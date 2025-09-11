@@ -137,3 +137,19 @@ extension IvsFpsExtension on IvsFps {
     }
   }
 }
+
+enum IvsKeyframeInterval {
+  i1,
+  i2,
+}
+
+extension IvsKeyframeIntervalExtension on IvsKeyframeInterval {
+  int get value {
+    switch (this) {
+      case IvsKeyframeInterval.i1:
+        return 1;
+      case IvsKeyframeInterval.i2:
+        return 2;
+    }
+  }
+}
