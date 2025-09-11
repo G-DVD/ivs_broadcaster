@@ -636,6 +636,7 @@ class IvsBroadcasterView: NSObject, FlutterPlatformView, FlutterStreamHandler,
     private let METHOD_GET_ALL_LOG_FILES = "getAllLogFiles"
     private let METHOD_SET_BITRATE = "setBitrate"
     private let METHOD_SET_FPS = "setFps"
+    private let METHOD_SET_KEYFRAME_INTERVAL = "setKeyframeInterval"
 
     private var initialZoomScale: CGFloat = 1.0
     private var currentZoomFactor: CGFloat = 1.0
@@ -652,6 +653,7 @@ class IvsBroadcasterView: NSObject, FlutterPlatformView, FlutterStreamHandler,
     private let ARG_BRIGHTNESS = "brightness"
     private let ARG_BITRATE = "bitrate"
     private let ARG_FPS = "fps"
+    private let ARG_KEYFRAME_INTERVAL = "keyframeInterval"
 
     func onMethodCall(call: FlutterMethodCall, result: FlutterResult) {
         logger.log("Method call received: \(call.method)")
@@ -788,6 +790,17 @@ class IvsBroadcasterView: NSObject, FlutterPlatformView, FlutterStreamHandler,
                 result(success)
             } else {
                 logger.log("Invalid FPS parameter", level: .error)
+                result(false)
+            }
+
+        case METHOD_SET_KEYFRAME_INTERVAL:
+            let args = call.arguments as? [String: Any]
+            if let keyframeInterval = args?[ARG_KEYFRAME_INTERVAL] as? Int {
+                logger.log("Setting keyframe interval to: \(keyframeInterval)")
+                let success = setKeyframeInterval(keyframeInterval)
+                result(success)
+            } else {
+                logger.log("Invalid keyframe interval parameter", level: .error)
                 result(false)
             }
 
@@ -1181,6 +1194,18 @@ class IvsBroadcasterView: NSObject, FlutterPlatformView, FlutterStreamHandler,
         logger.log("FPS preference stored: \(clamped) (applied next session)")
         return true
     }
+
+    private var desiredKeyframeInterval: Int? = nil
+
+    func setKeyframeInterval(_ keyframeInterval: Int) -> Bool {
+        let sdkMin = 1 // 1 second minimum
+        let sdkMax = 2 // 2 seconds maximum
+        let clamped = max(sdkMin, min(keyframeInterval, sdkMax))
+        desiredKeyframeInterval = clamped
+        logger.log("Keyframe interval preference stored: \(clamped) seconds (applied next session)")
+        return true
+    }
+
     
     private var isMuted = false {
         didSet {
@@ -1676,6 +1701,7 @@ extension IvsBroadcasterView: IVSMicrophoneDelegate {
         }()
 
         let defaultFps = 30 // Standard FPS for all resolution
+        let defaultKeyframeInterval = 2 // Standard for streaming
 
         // Use stored desiredBitrate or fallback to default
         let initial = desiredBitrate ?? defaultBitrate
@@ -1707,7 +1733,9 @@ extension IvsBroadcasterView: IVSMicrophoneDelegate {
         let targetFps = desiredFps ?? defaultFps
         try config.video.setTargetFramerate(targetFps)
 
-        try config.video.setKeyframeInterval(2)
+        // Apply keyframe interval - use desired if set, otherwise use default
+        let targetKeyframeInterval = desiredKeyframeInterval ?? defaultKeyframeInterval
+        try config.video.setKeyframeInterval(targetKeyframeInterval)
 
         
         // Enhanced audio configuration for better quality
