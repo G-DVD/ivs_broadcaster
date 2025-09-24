@@ -286,6 +286,7 @@ class IvsBroadcasterView: NSObject, FlutterPlatformView, FlutterStreamHandler,
 
         DispatchQueue.main.async {
             // Wait for the view to finish laying out
+            self.previewView.setNeedsLayout()
             self.previewView.layoutIfNeeded()
 
             // Update the preview layer frame to match the current view bounds
