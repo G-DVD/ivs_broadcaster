@@ -285,17 +285,30 @@ class IvsBroadcasterView: NSObject, FlutterPlatformView, FlutterStreamHandler,
         guard let previewLayer = videoPreviewLayer else { return }
 
         DispatchQueue.main.async {
-            // Wait for the view to finish laying out
+            // Force layout update before getting bounds
+            self.previewView.setNeedsLayout()
             self.previewView.layoutIfNeeded()
 
-            // Update the preview layer frame to match the current view bounds
-            let newFrame = self.previewView.bounds
-            previewLayer.frame = newFrame
+            // Wait one more run loop to ensure Flutter has finished its layout
+            DispatchQueue.main.async {
+                let newFrame = self.previewView.bounds
 
-            // Ensure the layer is properly scaled
-            previewLayer.videoGravity = .resizeAspectFill
+                // Only update if the frame actually changed
+                guard !newFrame.equalTo(previewLayer.frame) else { return }
 
-            self.logger.log("Preview layer frame updated to: \(newFrame)")
+                // Disable implicit animations for smooth transition
+                CATransaction.begin()
+                CATransaction.setDisableActions(true)
+
+                previewLayer.frame = newFrame
+
+                // Ensure the layer is properly scaled
+                previewLayer.videoGravity = .resizeAspectFill
+
+                CATransaction.commit()
+
+                self.logger.log("Preview layer frame updated to: \(newFrame)")
+            }
         }
     }
 
