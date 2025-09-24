@@ -285,7 +285,7 @@ class IvsBroadcasterView: NSObject, FlutterPlatformView, FlutterStreamHandler,
         guard let previewLayer = videoPreviewLayer else { return }
 
         // Add delay to fix quarter turns
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2 {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
             // Wait for the view to finish laying out
             self.previewView.layoutIfNeeded()
 
