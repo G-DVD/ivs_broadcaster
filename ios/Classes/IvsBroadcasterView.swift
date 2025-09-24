@@ -284,30 +284,48 @@ class IvsBroadcasterView: NSObject, FlutterPlatformView, FlutterStreamHandler,
     private func updatePreviewLayerFrame() {
         guard let previewLayer = videoPreviewLayer else { return }
 
-        DispatchQueue.main.async {
-            // Force layout update before getting bounds
+        // Use a longer delay to ensure Flutter has completed its layout
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            // Force multiple layout passes to ensure bounds are correct
             self.previewView.setNeedsLayout()
             self.previewView.layoutIfNeeded()
 
-            // Wait one more run loop to ensure Flutter has finished its layout
+            // Wait one more run loop cycle
             DispatchQueue.main.async {
                 let newFrame = self.previewView.bounds
 
-                // Only update if the frame actually changed
-                guard !newFrame.equalTo(previewLayer.frame) else { return }
+                // Validate that we have reasonable bounds
+                guard newFrame.width > 0 && newFrame.height > 0 else {
+                    self.logger.log("Invalid preview bounds: \(newFrame), retrying...")
+                    // Retry after another delay
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        self.updatePreviewLayerFrame()
+                    }
+                    return
+                }
 
-                // Disable implicit animations for smooth transition
+                // Only update if the frame actually changed significantly
+                let sizeDiff = abs(newFrame.width - previewLayer.frame.width) + abs(newFrame.height - previewLayer.frame.height)
+                guard sizeDiff > 1.0 else {
+                    self.logger.log("Frame change too small, skipping update")
+                    return
+                }
+
+                self.logger.log("Updating preview layer frame from \(previewLayer.frame) to \(newFrame)")
+
+                // Disable implicit animations for instant transition
                 CATransaction.begin()
                 CATransaction.setDisableActions(true)
 
+                // Update the frame
                 previewLayer.frame = newFrame
 
-                // Ensure the layer is properly scaled
+                // Ensure proper scaling
                 previewLayer.videoGravity = .resizeAspectFill
 
                 CATransaction.commit()
 
-                self.logger.log("Preview layer frame updated to: \(newFrame)")
+                self.logger.log("Preview layer frame updated successfully to: \(newFrame)")
             }
         }
     }
